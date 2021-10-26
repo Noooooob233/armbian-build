@@ -27,6 +27,7 @@
 # webseed
 # download_and_verify
 
+
 # cleaning <target>
 #
 # target: what to clean
@@ -39,6 +40,7 @@
 # "images" - delete output/images
 # "sources" - delete output/sources
 #
+
 cleaning()
 {
 	case $1 in
@@ -143,7 +145,7 @@ get_package_list_hash()
 
 # create_sources_list <release> <basedir>
 #
-# <release>: buster|bullseye|bionic|focal|hirsute|sid
+# <release>: buster|bullseye|bionic|focal|hirsute|impish|sid
 # <basedir>: path to root directory
 #
 create_sources_list()
@@ -169,7 +171,7 @@ create_sources_list()
 	EOF
 	;;
 
-	xenial|bionic|focal|hirsute)
+	xenial|bionic|focal|hirsute|impish)
 	cat <<-EOF > "${basedir}"/etc/apt/sources.list
 	deb http://${UBUNTU_MIRROR} $release main restricted universe multiverse
 	#deb-src http://${UBUNTU_MIRROR} $release main restricted universe multiverse
@@ -412,7 +414,7 @@ fetch_from_repo()
 display_alert()
 {
 	# log function parameters to install.log
-	[[ -n "${DEST}" ]] && echo "Displaying message: $@" >> "${DEST}"/debug/output.log
+	[[ -n "${DEST}" ]] && echo "Displaying message: $@" >> "${DEST}"/${LOG_SUBPATH}/output.log
 
 	local tmp=""
 	[[ -n $2 ]] && tmp="[\e[0;33m $2 \x1B[0m]"
@@ -686,7 +688,8 @@ addtorepo()
 # parameter "delete" remove incoming directory if publishing is succesful
 # function: cycle trough distributions
 
-	local distributions=("bionic" "buster" "bullseye" "focal" "hirsute" "sid")
+	local distributions=("stretch" "bionic" "buster" "bullseye" "focal" "hirsute" "impish" "sid")
+	#local distributions=($(grep -rw config/distributions/*/ -e 'supported' | cut -d"/" -f3))
 	local errors=0
 
 	for release in "${distributions[@]}"; do
@@ -815,7 +818,8 @@ repo-manipulate()
 # "update" search for new files in output/debs* to add them to repository
 # "purge" leave only last 5 versions
 
-	local DISTROS=($(grep -rw config/distributions/*/ -e 'supported' | cut -d"/" -f3))
+	local DISTROS=("stretch" "bionic" "buster" "bullseye" "focal" "hirsute" "impish" "sid")
+	#local DISTROS=($(grep -rw config/distributions/*/ -e 'supported' | cut -d"/" -f3))
 
 	case $@ in
 
@@ -1023,7 +1027,12 @@ prepare_host()
 	# wait until package manager finishes possible system maintanace
 	wait_for_package_manager
 
-	# temporally fix for Locales settings
+	# fix for Locales settings
+	if ! grep -q "^en_US.UTF-8 UTF-8" /etc/locale.gen; then
+		sudo sed -i 's/# en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen
+		sudo locale-gen
+	fi
+
 	export LC_ALL="en_US.UTF-8"
 
 	# packages list for host
@@ -1057,7 +1066,7 @@ prepare_host()
   fi
 
 	# Add support for Ubuntu 20.04, 21.04 and Mint 20.x
-	if [[ $HOSTRELEASE =~ ^(focal|hirsute|ulyana|ulyssa|bullseye|uma)$ ]]; then
+	if [[ $HOSTRELEASE =~ ^(focal|impish|hirsute|ulyana|ulyssa|bullseye|uma)$ ]]; then
 		hostdeps+=" python2 python3"
 		ln -fs /usr/bin/python2.7 /usr/bin/python2
 		ln -fs /usr/bin/python2.7 /usr/bin/python
@@ -1072,7 +1081,7 @@ prepare_host()
 	#
 	# NO_HOST_RELEASE_CHECK overrides the check for a supported host system
 	# Disable host OS check at your own risk. Any issues reported with unsupported releases will be closed without discussion
-	if [[ -z $HOSTRELEASE || "buster bullseye focal hirsute debbie tricia ulyana ulyssa uma" != *"$HOSTRELEASE"* ]]; then
+	if [[ -z $HOSTRELEASE || "buster bullseye focal impish hirsute debbie tricia ulyana ulyssa uma" != *"$HOSTRELEASE"* ]]; then
 		if [[ $NO_HOST_RELEASE_CHECK == yes ]]; then
 			display_alert "You are running on an unsupported system" "${HOSTRELEASE:-(unknown)}" "wrn"
 			display_alert "Do not report any errors, warnings or other issues encountered beyond this point" "" "wrn"
@@ -1088,7 +1097,7 @@ prepare_host()
 # build aarch64
   if [[ $(dpkg --print-architecture) == amd64 ]]; then
 
-	if [[ -z $HOSTRELEASE || $HOSTRELEASE =~ ^(focal|debbie|buster|bullseye|hirsute|ulyana|ulyssa|uma)$ ]]; then
+	if [[ -z $HOSTRELEASE || $HOSTRELEASE =~ ^(focal|debbie|buster|bullseye|impish|hirsute|ulyana|ulyssa|uma)$ ]]; then
 	    hostdeps="${hostdeps/lib32ncurses5 lib32tinfo5/lib32ncurses6 lib32tinfo6}"
 	fi
 
@@ -1151,9 +1160,11 @@ prepare_host()
 
 	if [[ ${#deps[@]} -gt 0 ]]; then
 		display_alert "Installing build dependencies"
+		# don't prompt for apt cacher selection
+		sudo echo "apt-cacher-ng    apt-cacher-ng/tunnelenable      boolean false" | sudo debconf-set-selections
 		apt-get -q update
 		apt-get -y upgrade
-		apt-get -q -y --no-install-recommends install -o Dpkg::Options::='--force-confold' "${deps[@]}" | tee -a "${DEST}"/debug/hostdeps.log
+		apt-get -q -y --no-install-recommends install -o Dpkg::Options::='--force-confold' "${deps[@]}" | tee -a "${DEST}"/${LOG_SUBPATH}/hostdeps.log
 		update-ccache-symlinks
 	fi
 
@@ -1360,7 +1371,7 @@ download_and_verify()
 			aria2c ${ariatorrent}
 		else
 			# shellcheck disable=SC2035
-			aria2c ${ariatorrent} &> "${DEST}"/debug/torrent.log
+			aria2c ${ariatorrent} &> "${DEST}"/${LOG_SUBPATH}/torrent.log
 		fi
 		# mark complete
 		[[ $? -eq 0 ]] && touch "${localdir}/${filename}.complete"
@@ -1394,29 +1405,29 @@ download_and_verify()
 			# Verify archives with Linaro and Armbian GPG keys
 
 			if [ x"" != x"${http_proxy}" ]; then
-				(gpg --homedir "${SRC}"/cache/.gpg --no-permission-warning --list-keys 8F427EAF >> "${DEST}"/debug/output.log 2>&1\
+				(gpg --homedir "${SRC}"/cache/.gpg --no-permission-warning --list-keys 8F427EAF >> "${DEST}"/${LOG_SUBPATH}/output.log 2>&1\
 				 || gpg --homedir "${SRC}"/cache/.gpg --no-permission-warning \
 				--keyserver hkp://keyserver.ubuntu.com:80 --keyserver-options http-proxy="${http_proxy}" \
-				--recv-keys 8F427EAF >> "${DEST}"/debug/output.log 2>&1)
+				--recv-keys 8F427EAF >> "${DEST}"/${LOG_SUBPATH}/output.log 2>&1)
 
-				(gpg --homedir "${SRC}"/cache/.gpg --no-permission-warning --list-keys 9F0E78D5 >> "${DEST}"/debug/output.log 2>&1\
+				(gpg --homedir "${SRC}"/cache/.gpg --no-permission-warning --list-keys 9F0E78D5 >> "${DEST}"/${LOG_SUBPATH}/output.log 2>&1\
 				|| gpg --homedir "${SRC}"/cache/.gpg --no-permission-warning \
 				--keyserver hkp://keyserver.ubuntu.com:80 --keyserver-options http-proxy="${http_proxy}" \
-				--recv-keys 9F0E78D5 >> "${DEST}"/debug/output.log 2>&1)
+				--recv-keys 9F0E78D5 >> "${DEST}"/${LOG_SUBPATH}/output.log 2>&1)
 			else
-				(gpg --homedir "${SRC}"/cache/.gpg --no-permission-warning --list-keys 8F427EAF >> "${DEST}"/debug/output.log 2>&1\
+				(gpg --homedir "${SRC}"/cache/.gpg --no-permission-warning --list-keys 8F427EAF >> "${DEST}"/${LOG_SUBPATH}/output.log 2>&1\
 				 || gpg --homedir "${SRC}"/cache/.gpg --no-permission-warning \
 				--keyserver hkp://keyserver.ubuntu.com:80 \
-				--recv-keys 8F427EAF >> "${DEST}"/debug/output.log 2>&1)
+				--recv-keys 8F427EAF >> "${DEST}"/${LOG_SUBPATH}/output.log 2>&1)
 
-				(gpg --homedir "${SRC}"/cache/.gpg --no-permission-warning --list-keys 9F0E78D5 >> "${DEST}"/debug/output.log 2>&1\
+				(gpg --homedir "${SRC}"/cache/.gpg --no-permission-warning --list-keys 9F0E78D5 >> "${DEST}"/${LOG_SUBPATH}/output.log 2>&1\
 				|| gpg --homedir "${SRC}"/cache/.gpg --no-permission-warning \
 				--keyserver hkp://keyserver.ubuntu.com:80 \
-				--recv-keys 9F0E78D5 >> "${DEST}"/debug/output.log 2>&1)
+				--recv-keys 9F0E78D5 >> "${DEST}"/${LOG_SUBPATH}/output.log 2>&1)
 			fi
 
 			gpg --homedir "${SRC}"/cache/.gpg --no-permission-warning --verify \
-			--trust-model always -q "${localdir}/${filename}.asc" >> "${DEST}"/debug/output.log 2>&1
+			--trust-model always -q "${localdir}/${filename}.asc" >> "${DEST}"/${LOG_SUBPATH}/output.log 2>&1
 			[[ ${PIPESTATUS[0]} -eq 0 ]] && verified=true && display_alert "Verified" "PGP" "info"
 
 		else
@@ -1466,3 +1477,33 @@ show_developer_warning()
 	[[ $? -ne 0 ]] && exit_with_error "Error switching to the expert mode"
 	SHOW_WARNING=no
 }
+
+# is a formatted output of the values of variables
+# from the list at the place of the function call.
+#
+# The LOG_OUTPUT_FILE variable must be defined in the calling function
+# before calling the `show_checklist_variables` function and unset after.
+#
+show_checklist_variables ()
+{
+	local checklist=$*
+	local var pval
+	local log_file=${LOG_OUTPUT_FILE:-"${SRC}"/output/${LOG_SUBPATH}/trash.log}
+	local _line=${BASH_LINENO[0]}
+	local _function=${FUNCNAME[1]}
+	local _file=$(basename "${BASH_SOURCE[1]}")
+
+	echo -e "Show variables in function: $_function" "[$_file:$_line]\n" >>$log_file
+
+	for var in $checklist;do
+		eval pval=\$$var
+		echo -e "\n$var =:" >>$log_file
+		if [ $(echo "$pval" | gawk -F"/" '{print NF}') -ge 4 ];then
+			printf "%s\n" $pval >>$log_file
+		else
+			printf "%-30s %-30s %-30s %-30s\n" $pval >>$log_file
+		fi
+	done
+}
+
+

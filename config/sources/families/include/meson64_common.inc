@@ -1,18 +1,18 @@
-UBOOT_TARGET_MAP="u-boot-dtb.img;;u-boot.bin.sd.bin:u-boot.bin u-boot-dtb.img"
+UBOOT_TARGET_MAP="${UBOOT_TARGET_MAP:-u-boot-dtb.img;;u-boot.bin.sd.bin:u-boot.bin u-boot-dtb.img}"
 BOOTSCRIPT="boot-meson64.cmd:boot.cmd"
 BOOTENV_FILE='meson.txt'
 LINUXFAMILY=meson64
 ARCH=arm64
 SERIALCON=ttyAML0
 SRC_LOADADDR='LOADADDR=0x1080000'
-BOOTBRANCH="tag:v2021.04"
+BOOTBRANCH="tag:v2021.07"
 OVERLAY_PREFIX='meson'
 
 # this family does not need it
 ATF_COMPILE="no"
 
 if [[ $BOARD == lafrite ]]; then
-		UBOOT_TARGET_MAP="u-boot-dtb.img;;u-boot.bin:u-boot.bin u-boot-dtb.img"
+	UBOOT_TARGET_MAP="u-boot-dtb.img;;u-boot.bin:u-boot.bin u-boot-dtb.img"
 fi
 
 # Set CPUMIN et al if not already set in the board config.
@@ -34,7 +34,7 @@ case $BRANCH in
         ;;
 
         edge)
-		KERNELBRANCH='branch:linux-5.12.y'
+		KERNELBRANCH='branch:linux-5.14.y'
 		KERNELPATCHDIR='meson64-edge'
         ;;
 
@@ -88,6 +88,54 @@ uboot_gxl_postprocess()
 				--bl30 $1/$2/bl30_new.bin.enc \
 				--bl31 $1/$2/bl31.img.enc \
 				--bl33 bl33.bin.enc
+}
+
+# this helper function includes postprocess for s400 and its variants.
+# $1 PATH for uboot blob repo
+# $2 dir name in uboot blob repo
+uboot_axg_postprocess_ng()
+{
+	mv u-boot.bin bl33.bin
+
+	$1/blx_fix.sh 	$1/$2/bl30.bin \
+			$1/$2/zero_tmp \
+			$1/$2/bl30_zero.bin \
+			$1/$2/bl301.bin \
+			$1/$2/bl301_zero.bin \
+			$1/$2/bl30_new.bin bl30
+
+	python3 $1/acs_tool.py $1/$2/bl2.bin \
+			$1/$2/bl2_acs.bin \
+			$1/$2/acs.bin 0
+
+	$1/blx_fix.sh 	$1/$2/bl2_acs.bin \
+			$1/$2/zero_tmp \
+			$1/$2/bl2_zero.bin \
+			$1/$2/bl21.bin \
+			$1/$2/bl21_zero.bin \
+			$1/$2/bl2_new.bin bl2
+
+	$PKG_PREFIX$1/$2/aml_encrypt_axg        --bl3sig --input $1/$2/bl30_new.bin \
+                                --output bl30_new.bin.enc \
+                                --level v3 --type bl30
+
+	$PKG_PREFIX$1/$2/aml_encrypt_axg        --bl3sig --input $1/$2/bl31.img \
+                                --output bl31.img.enc \
+                                --level v3 --type bl31
+
+	$PKG_PREFIX$1/$2/aml_encrypt_axg        --bl3sig --input bl33.bin --compress lz4 \
+                                --output bl33.bin.enc \
+                                --level v3 --type bl33
+
+	$PKG_PREFIX$1/$2/aml_encrypt_axg        --bl2sig --input $1/$2/bl2_new.bin \
+                                --output bl2.n.bin.sig
+
+	$PKG_PREFIX$1/$2/aml_encrypt_axg        --bootmk \
+                                --output u-boot.bin \
+                                --bl2 bl2.n.bin.sig \
+                                --bl30 bl30_new.bin.enc \
+                                --bl31 bl31.img.enc \
+                                --bl33 bl33.bin.enc --level v3
 }
 
 # this helper function includes postprocess for u200 and its variants.
@@ -218,17 +266,27 @@ family_tweaks_bsp()
 
 	mkdir -p "$destination"/etc/X11/xorg.conf.d
 	case "${BOARD}" in
-		"odroidc2" | "nanopik2-s905" | "lepotato" | "lafrite" | "khadas-vim1" )
+		"odroidc2" | "nanopik2-s905" | "lepotato" | "lafrite" | "khadas-vim1" | "khadas-vim2" )
 	cat <<-EOF > "$destination"/etc/X11/xorg.conf.d/02-driver.conf
-	# set fbdev as default driver.
-	Section "Device"
-	    Identifier "DRM Graphics"
+	Section "OutputClass"
+	    Identifier "Amlogic"
+	    MatchDriver "meson"
 	    Driver "modesetting"
-            AccelMethod "none"
+	    Option "PrimaryGPU" "true"
+	EndSection
+	Section "Screen"
+	    Identifier      "Default Screen"
+	    Device          "Meson"
+	    Monitor         "foo"
+	    DefaultDepth  24
+	    SubSection "Display"
+	       Depth    24
+	       Modes    "1920x1080" "1440x900" "1280x720" "1280x1024" "1280x960" "1024x768" "800x600" "640x480" "720x400"
+	    EndSubSection
 	EndSection
 	EOF
         ;;
-		"odroidn2" | "odroidc4" | "khadas-vim2" | "odroidhc4" | "khadas-vim3" | "khadas-vim3l" )
+		"odroidn2" | "odroidc4" | "khadas-vim2" | "odroidhc4" | "khadas-vim3" | "khadas-vim3l" | "radxa-zero" )
 	cat <<-EOF > "$destination"/etc/X11/xorg.conf
 	Section "Device"
 	    Identifier  "DRM Graphics Acclerated"

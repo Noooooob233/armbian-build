@@ -1,6 +1,5 @@
 ARCH=armhf
 BOOTDELAY=1
-BOOTBRANCH='tag:v2021.04'
 BOOTPATCHDIR='u-boot-sunxi'
 UBOOT_TARGET_MAP=';;u-boot-sunxi-with-spl.bin'
 BOOTSCRIPT="boot-sunxi.cmd:boot.cmd"
@@ -30,7 +29,7 @@ case $BRANCH in
 	edge)
 
 		KERNELSOURCE="https://github.com/megous/linux"
-		KERNELBRANCH="branch:orange-pi-5.12"
+		KERNELBRANCH="branch:orange-pi-5.14"
 		KERNELPATCHDIR='sunxi-'$BRANCH
 
 	;;
