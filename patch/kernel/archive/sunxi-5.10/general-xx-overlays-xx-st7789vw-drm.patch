@@ -1,0 +1,56 @@
+From 08ce4e69259ded3b543812180898e2892a9af3c6 Mon Sep 17 00:00:00 2001
+From: Noooooob233 <493281372@qq.com>
+Date: Wed, 10 Nov 2021 13:32:11 +0800
+Subject: [PATCH] add st7789vw drm overlay
+
+---
+ arch/arm/boot/dts/overlay/Makefile            |  1 +
+ .../dts/overlay/sun8i-h3-spi-drm-st7789vw.dts | 24 +++++++++++++++++++
+ 2 files changed, 25 insertions(+)
+ create mode 100755 arch/arm/boot/dts/overlay/sun8i-h3-spi-drm-st7789vw.dts
+
+diff --git a/arch/arm/boot/dts/overlay/Makefile b/arch/arm/boot/dts/overlay/Makefile
+index 900ccff34..c443400ee 100644
+--- a/arch/arm/boot/dts/overlay/Makefile
++++ b/arch/arm/boot/dts/overlay/Makefile
+@@ -70,6 +70,7 @@ dtbo-$(CONFIG_MACH_SUN8I) += \
+ 	sun8i-h3-spi-jedec-nor.dtbo \
+ 	sun8i-h3-spi-spidev.dtbo \
+ 	sun8i-h3-spi-st7789vw.dtbo \
++        sun8i-h3-spi-drm-st7789vw.dtbo \
+ 	sun8i-h3-uart1.dtbo \
+ 	sun8i-h3-uart2.dtbo \
+ 	sun8i-h3-uart3.dtbo \
+diff --git a/arch/arm/boot/dts/overlay/sun8i-h3-spi-drm-st7789vw.dts b/arch/arm/boot/dts/overlay/sun8i-h3-spi-drm-st7789vw.dts
+new file mode 100755
+index 000000000..453892474
+--- /dev/null
++++ b/arch/arm/boot/dts/overlay/sun8i-h3-spi-drm-st7789vw.dts
+@@ -0,0 +1,24 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target = < &spi0 >;
++
++		__overlay__ {
++			status = "okay";
++
++			st7789vw@0 {
++				compatible = "sitronix,st7789vw";
++				reg = < 0x00 >;
++				spi-max-frequency = < 96000000 >;
++				rotation = < 0 >;
++				reset-gpios = < &pio 0x00 0x01 0x00 >;
++				dc-gpios = < &pio 0x00 0x00 0x00 >;
++				status = "okay";
++			};
++		};
++	};
++};
+-- 
+2.25.1
+
