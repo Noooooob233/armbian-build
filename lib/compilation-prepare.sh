@@ -690,6 +690,38 @@ compilation_prepare()
 	fi
 
 
+	# Wireless drivers for Realtek 8723bu chipsets
+
+	if linux-version compare "${version}" ge 3.14 && [ "$EXTRAWIFI" == yes ]; then
+
+		# attach to specifics tag or branch
+		local rtl8723buver="branch:master"
+
+		display_alert "Adding" "Wireless drivers for Realtek 8723bu chipsets ${rtl8723buver}" "info"
+
+		fetch_from_repo "https://github.com/Noooooob233/rtl8723bu" "rtl8723bu" "${rtl8723buver}" "yes"
+		cd "$kerneldir" || exit
+		rm -rf "$kerneldir/drivers/net/wireless/rtl8723bu"
+		mkdir -p "$kerneldir/drivers/net/wireless/rtl8723bu/"
+		cp -R "${SRC}/cache/sources/rtl8723bu/${rtl8723buver#*:}"/{core,hal,include,os_dep,platform} \
+		"$kerneldir/drivers/net/wireless/rtl8723bu"
+
+		# Makefile
+		cp "${SRC}/cache/sources/rtl8723bu/${rtl8723buver#*:}/Makefile" \
+		"$kerneldir/drivers/net/wireless/rtl8723bu/Makefile"
+
+		# Kconfig
+		sed -i 's/---help---/help/g' "${SRC}/cache/sources/rtl8723bu/${rtl8723buver#*:}/Kconfig"
+		cp "${SRC}/cache/sources/rtl8723bu/${rtl8723buver#*:}/Kconfig" \
+		"$kerneldir/drivers/net/wireless/rtl8723bu/Kconfig"
+
+		# Add to section Makefile
+		echo "obj-\$(CONFIG_RTL8723BU) += rtl8723bu/" >> "$kerneldir/drivers/net/wireless/Makefile"
+		sed -i '/source "drivers\/net\/wireless\/ti\/Kconfig"/a source "drivers\/net\/wireless\/rtl8723bu\/Kconfig"' \
+		"$kerneldir/drivers/net/wireless/Kconfig"
+
+	fi
+
 
 	if linux-version compare $version ge 4.4 && linux-version compare $version lt 5.8; then
 		display_alert "Adjusting" "Framebuffer driver for ST7789 IPS display" "info"
