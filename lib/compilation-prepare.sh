@@ -699,7 +699,7 @@ compilation_prepare()
 
 		display_alert "Adding" "Wireless drivers for Realtek 8723bu chipsets ${rtl8723buver}" "info"
 
-		fetch_from_repo "https://github.com/Noooooob233/rtl8723bu" "rtl8723bu" "${rtl8723buver}" "yes"
+		fetch_from_repo "https://github.com/Noooooob233/rtl8723bu_realtek" "rtl8723bu" "${rtl8723buver}" "yes"
 		cd "$kerneldir" || exit
 		rm -rf "$kerneldir/drivers/net/wireless/rtl8723bu"
 		mkdir -p "$kerneldir/drivers/net/wireless/rtl8723bu/"
@@ -710,6 +710,10 @@ compilation_prepare()
 		cp "${SRC}/cache/sources/rtl8723bu/${rtl8723buver#*:}/Makefile" \
 		"$kerneldir/drivers/net/wireless/rtl8723bu/Makefile"
 
+		# Disable debug
+		sed -i "s/^CONFIG_RTW_DEBUG.*/CONFIG_RTW_DEBUG = n/" \
+		$kerneldir/drivers/net/wireless/rtl8723bu/Makefile
+		
 		# Kconfig
 		sed -i 's/---help---/help/g' "${SRC}/cache/sources/rtl8723bu/${rtl8723buver#*:}/Kconfig"
 		cp "${SRC}/cache/sources/rtl8723bu/${rtl8723buver#*:}/Kconfig" \
