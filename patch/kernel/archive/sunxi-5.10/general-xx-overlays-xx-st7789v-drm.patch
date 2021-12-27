@@ -1,0 +1,89 @@
+From 4ed66445e201688e6de97f95a1874e39473ca68a Mon Sep 17 00:00:00 2001
+From: Noooooob233 <493281372@qq.com>
+Date: Thu, 9 Dec 2021 17:36:35 +0800
+Subject: [PATCH] add overlay st7789v
+
+---
+ arch/arm/boot/dts/overlay/Makefile            |  2 ++
+ .../overlay/sun8i-h3-spi-st7789v_240x135.dts  | 24 +++++++++++++++++++
+ .../overlay/sun8i-h3-spi-st7789v_240x240.dts  | 24 +++++++++++++++++++
+ 3 files changed, 50 insertions(+)
+ create mode 100755 arch/arm/boot/dts/overlay/sun8i-h3-spi-st7789v_240x135.dts
+ create mode 100755 arch/arm/boot/dts/overlay/sun8i-h3-spi-st7789v_240x240.dts
+
+diff --git a/arch/arm/boot/dts/overlay/Makefile b/arch/arm/boot/dts/overlay/Makefile
+index 900ccff34..6ccb299ad 100644
+--- a/arch/arm/boot/dts/overlay/Makefile
++++ b/arch/arm/boot/dts/overlay/Makefile
+@@ -70,6 +70,8 @@ dtbo-$(CONFIG_MACH_SUN8I) += \
+ 	sun8i-h3-spi-jedec-nor.dtbo \
+ 	sun8i-h3-spi-spidev.dtbo \
+ 	sun8i-h3-spi-st7789vw.dtbo \
++	sun8i-h3-spi-st7789v_240x135.dtbo \
++	sun8i-h3-spi-st7789v_240x240.dtbo \
+ 	sun8i-h3-uart1.dtbo \
+ 	sun8i-h3-uart2.dtbo \
+ 	sun8i-h3-uart3.dtbo \
+diff --git a/arch/arm/boot/dts/overlay/sun8i-h3-spi-st7789v_240x135.dts b/arch/arm/boot/dts/overlay/sun8i-h3-spi-st7789v_240x135.dts
+new file mode 100755
+index 000000000..7b783c5bc
+--- /dev/null
++++ b/arch/arm/boot/dts/overlay/sun8i-h3-spi-st7789v_240x135.dts
+@@ -0,0 +1,24 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target = < &spi0 >;
++
++		__overlay__ {
++			status = "okay";
++
++			st7789v@0 {
++				compatible = "sitronix,st7789v_240x135";
++				reg = < 0x00 >;
++				spi-max-frequency = < 96000000 >;
++				rotation = < 0 >;
++				reset-gpios = < &pio 0x00 0x01 0x00 >;
++				dc-gpios = < &pio 0x00 0x00 0x00 >;
++				status = "okay";
++			};
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlay/sun8i-h3-spi-st7789v_240x240.dts b/arch/arm/boot/dts/overlay/sun8i-h3-spi-st7789v_240x240.dts
+new file mode 100755
+index 000000000..0caf46bdd
+--- /dev/null
++++ b/arch/arm/boot/dts/overlay/sun8i-h3-spi-st7789v_240x240.dts
+@@ -0,0 +1,24 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target = < &spi0 >;
++
++		__overlay__ {
++			status = "okay";
++
++			st7789v@0 {
++				compatible = "sitronix,st7789v_240x240";
++				reg = < 0x00 >;
++				spi-max-frequency = < 96000000 >;
++				rotation = < 0 >;
++				reset-gpios = < &pio 0x00 0x01 0x00 >;
++				dc-gpios = < &pio 0x00 0x00 0x00 >;
++				status = "okay";
++			};
++		};
++	};
++};
+-- 
+2.25.1
+
